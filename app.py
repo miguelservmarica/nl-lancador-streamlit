@@ -241,19 +241,49 @@ class ECidadeBot:
                                 height=200, 
                                 key=f"log_{len(st.session_state.logs)}")
 
-    def start(self, headless: bool = False):
+    def start(self, headless: bool = True):
         """Inicia o Chrome."""
         self.log("🖥️ Iniciando Chrome com webdriver-manager…")
         options = webdriver.ChromeOptions()
-        options.add_argument("--start-maximized")
-        options.add_argument("--disable-dev-shm-usage")
+        
+        # Configurações para ambiente de servidor
+        options.add_argument("--headless=new")
         options.add_argument("--no-sandbox")
-        if headless:
-            options.add_argument("--headless=new")
-        service = ChromeService(ChromeDriverManager().install())
-        self.driver = webdriver.Chrome(service=service, options=options)
-        self.wait = WebDriverWait(self.driver, 30)
-        self.actions = ActionChains(self.driver)
+        options.add_argument("--disable-dev-shm-usage")
+        options.add_argument("--disable-gpu")
+        options.add_argument("--disable-features=NetworkService")
+        options.add_argument("--window-size=1920x1080")
+        options.add_argument("--disable-features=VizDisplayCompositor")
+        options.add_argument("--disable-software-rasterizer")
+        options.add_argument("--disable-extensions")
+        options.add_argument("--disable-setuid-sandbox")
+        options.add_argument("--disable-web-security")
+        options.add_argument("--disable-blink-features=AutomationControlled")
+        options.add_experimental_option("excludeSwitches", ["enable-automation"])
+        options.add_experimental_option('useAutomationExtension', False)
+        
+        # Tentar usar Chromium do sistema (Streamlit Cloud)
+        options.binary_location = "/usr/bin/chromium"
+        
+        try:
+            # Primeiro tentar com ChromeDriverManager
+            try:
+                service = ChromeService(ChromeDriverManager().install())
+                self.driver = webdriver.Chrome(service=service, options=options)
+            except Exception as e1:
+                self.log(f"⚠️ ChromeDriverManager falhou, tentando chromedriver do sistema...")
+                # Fallback: usar chromedriver do sistema
+                service = ChromeService("/usr/bin/chromedriver")
+                self.driver = webdriver.Chrome(service=service, options=options)
+            
+            self.wait = WebDriverWait(self.driver, 30)
+            self.actions = ActionChains(self.driver)
+            self.log("✅ Chrome iniciado com sucesso!")
+        except Exception as e:
+            self.log(f"❌ Erro ao iniciar Chrome: {e}")
+            self.log("💡 Dica: Este erro é comum no Streamlit Cloud gratuito.")
+            self.log("💡 Recomendamos executar localmente com: streamlit run app.py")
+            raise RuntimeError(f"Não foi possível iniciar o navegador. Execute localmente para usar a automação.")
 
     def login(self, usuario: str, senha: str):
         """Abre a tela de login e autentica."""
@@ -425,8 +455,15 @@ def main():
         layout="wide"
     )
 
-    st.title("🧾 NL → E-Cidade (Maricá)")
-    st.markdown("**Sistema de Lançamento Automático de Notificações de Lançamento**")
+    # Header com logo
+    col1, col2 = st.columns([1, 4])
+    with col1:
+        st.image("https://www.marica.rj.gov.br/wp-content/uploads/2025/04/prefeitura_marica_horizontal_vermelho_slogan.webp", 
+                 width=250)
+    with col2:
+        st.title("NL → E-Cidade")
+        st.markdown("**Sistema de Lançamento Automático de Notificações de Lançamento**")
+    
     st.markdown("---")
 
     # Inicializar session_state
