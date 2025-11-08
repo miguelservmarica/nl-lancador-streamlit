@@ -1,0 +1,5 @@
+streamlit==1.28.0
+selenium==4.15.2
+webdriver-manager==4.0.1
+pdfplumber==0.10.3
+PyPDF2==3.0.1
